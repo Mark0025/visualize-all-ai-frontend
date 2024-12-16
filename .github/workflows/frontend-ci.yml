@@ -1,10 +1,13 @@
-name: Frontend CI
+name: Frontend CI/CD
 
 on:
   push:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
+
+env:
+  NEXT_PUBLIC_BASE_PATH: /aivizdata
 
 jobs:
   build-and-test:
@@ -33,6 +36,8 @@ jobs:
     
     - name: Build
       run: npm run build
+      env:
+        NEXT_PUBLIC_BASE_URL: https://aireinvestor.com/aivizdata
     
     - name: Cache build
       uses: actions/cache@v3
@@ -52,15 +57,24 @@ jobs:
       env:
         SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-  deploy-preview:
-    if: github.event_name == 'pull_request'
+  deploy:
     needs: [build-and-test, security]
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     
     steps:
-    - name: Deploy to Vercel Preview
-      uses: amondnet/vercel-action@v20
+    - uses: actions/checkout@v3
+    
+    - name: Download build cache
+      uses: actions/cache@v3
       with:
-        vercel-token: ${{ secrets.VERCEL_TOKEN }}
-        vercel-org-id: ${{ secrets.ORG_ID}}
-        vercel-project-id: ${{ secrets.PROJECT_ID }} 
+        path: .next
+        key: ${{ runner.os }}-nextjs-${{ hashFiles('**/*.ts', '**/*.tsx') }}
+    
+    - name: Deploy to production
+      env:
+        NEXT_PUBLIC_BASE_URL: https://aireinvestor.com/aivizdata
+        NEXT_PUBLIC_BASE_PATH: /aivizdata
+      run: |
+        # Add your deployment commands here
+        echo "Deploying to production..."
